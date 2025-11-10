@@ -8,6 +8,7 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  formula: string | null;
   cost: number;
   price: number;
   createdAt: string;
@@ -75,6 +76,9 @@ export default function ProductsPage() {
                   Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Formula
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Cost
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -96,6 +100,9 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {product.description || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    {product.formula || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     ${product.cost.toFixed(2)}

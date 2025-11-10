@@ -4,11 +4,12 @@ import prisma from "@/src/lib/db";
 // GET /api/batches/:id - Get a single batch
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const batch = await prisma.batch.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       include: {
         product: true,
         expenses: true,
@@ -36,14 +37,15 @@ export async function GET(
 // PUT /api/batches/:id - Update a batch
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { productId, name, quantity, cost, status, startDate, endDate } = body;
 
     const batch = await prisma.batch.update({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       data: {
         ...(productId !== undefined && { productId: parseInt(productId) }),
         ...(name !== undefined && { name }),
@@ -71,11 +73,12 @@ export async function PUT(
 // DELETE /api/batches/:id - Delete a batch
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await prisma.batch.delete({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
     });
 
     return NextResponse.json({ success: true });

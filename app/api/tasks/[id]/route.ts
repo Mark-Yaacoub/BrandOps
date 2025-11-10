@@ -4,11 +4,12 @@ import prisma from "@/src/lib/db";
 // GET /api/tasks/:id - Get a single task
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const task = await prisma.task.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       include: {
         product: true,
         batch: true,
@@ -35,14 +36,15 @@ export async function GET(
 // PUT /api/tasks/:id - Update a task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { title, description, status, priority, dueDate, productId, batchId } = body;
 
     const task = await prisma.task.update({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       data: {
         ...(title !== undefined && { title }),
         ...(description !== undefined && { description }),
@@ -71,11 +73,12 @@ export async function PUT(
 // DELETE /api/tasks/:id - Delete a task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await prisma.task.delete({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
     });
 
     return NextResponse.json({ success: true });
@@ -87,3 +90,4 @@ export async function DELETE(
     );
   }
 }
+

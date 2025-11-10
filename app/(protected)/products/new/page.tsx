@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function NewProductPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    formula: "",
     cost: "",
     price: "",
   });
@@ -28,6 +30,7 @@ export default function NewProductPage() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       router.push("/products");
     },
   });
@@ -75,8 +78,21 @@ export default function NewProductPage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows={4}
+              rows={3}
               placeholder="Enter product description"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Formula
+            </label>
+            <textarea
+              value={formData.formula}
+              onChange={(e) => setFormData({ ...formData, formula: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={3}
+              placeholder="Enter product formula"
             />
           </div>
 

@@ -4,11 +4,12 @@ import prisma from "@/src/lib/db";
 // GET /api/expenses/:id - Get a single expense
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const expense = await prisma.expense.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       include: {
         batch: true,
         product: true,
@@ -35,14 +36,15 @@ export async function GET(
 // PUT /api/expenses/:id - Update an expense
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { type, amount, date, notes, batchId, productId } = body;
 
     const expense = await prisma.expense.update({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       data: {
         ...(type !== undefined && { type }),
         ...(amount !== undefined && { amount: parseFloat(amount) }),
@@ -70,11 +72,12 @@ export async function PUT(
 // DELETE /api/expenses/:id - Delete an expense
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await prisma.expense.delete({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
     });
 
     return NextResponse.json({ success: true });

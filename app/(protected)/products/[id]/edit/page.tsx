@@ -9,36 +9,42 @@ import Link from "next/link";
 export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    formula: "",
     cost: "",
     price: "",
   });
 
-  const { data: product, isLoading } = useQuery({
+  const { data: productData, isLoading, error } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
       const res = await fetch(`/api/products/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch product");
-      const json = await res.json();
-      return json.data;
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to fetch product");
+      }
+      return res.json();
     },
+    enabled: !!id,
   });
 
   useEffect(() => {
-    if (product) {
+    if (productData?.data) {
+      const product = productData.data;
       setFormData({
-        name: product.name,
+        name: product.name || "",
         description: product.description || "",
-        cost: product.cost.toString(),
-        price: product.price.toString(),
+        formula: product.formula || "",
+        cost: product.cost?.toString() || "",
+        price: product.price?.toString() || "",
       });
     }
-  }, [product]);
+  }, [productData]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -65,8 +71,44 @@ export default function EditProductPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-500">Loading product...</div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="text-lg text-gray-500 mb-2">Loading product...</div>
+          <div className="text-sm text-gray-400">Please wait</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="text-lg text-red-600 mb-2">Error loading product</div>
+          <div className="text-sm text-gray-500 mb-4">{(error as Error).message}</div>
+          <Link
+            href="/products"
+            className="text-blue-600 hover:text-blue-800"
+          >
+            Back to Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!productData?.data) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="text-lg text-gray-500 mb-2">Product not found</div>
+          <Link
+            href="/products"
+            className="text-blue-600 hover:text-blue-800"
+          >
+            Back to Products
+          </Link>
+        </div>
       </div>
     );
   }
@@ -96,7 +138,7 @@ export default function EditProductPage() {
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
               placeholder="Enter product name"
             />
           </div>
@@ -108,9 +150,22 @@ export default function EditProductPage() {
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows={4}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+              rows={3}
               placeholder="Enter product description"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Formula
+            </label>
+            <textarea
+              value={formData.formula}
+              onChange={(e) => setFormData({ ...formData, formula: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+              rows={3}
+              placeholder="Enter product formula"
             />
           </div>
 
@@ -127,7 +182,7 @@ export default function EditProductPage() {
                   required
                   value={formData.cost}
                   onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                   placeholder="0.00"
                 />
               </div>
@@ -145,7 +200,7 @@ export default function EditProductPage() {
                   required
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                   placeholder="0.00"
                 />
               </div>

@@ -30,7 +30,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, cost, price } = body;
+    const { name, description, formula, cost, price } = body;
 
     // Basic validation
     if (!name || cost === undefined || price === undefined) {
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         description: description || null,
+        formula: formula || null,
         cost: parseFloat(cost),
         price: parseFloat(price),
       },
