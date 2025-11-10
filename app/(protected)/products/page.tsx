@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import AlertDialog from "@/app/components/AlertDialog";
 
 interface Product {
   id: number;
@@ -17,6 +19,18 @@ interface Product {
 
 export default function ProductsPage() {
   const queryClient = useQueryClient();
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    type: "confirm" | "success" | "error";
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    type: "confirm",
+    title: "",
+    message: "",
+  });
 
   const { data, isLoading } = useQuery<{ success: boolean; data: Product[] }>({
     queryKey: ["products"],
@@ -31,17 +45,38 @@ export default function ProductsPage() {
       const res = await fetch(`/api/products/${id}`, {
         method: "DELETE",
       });
+      if (!res.ok) {
+        throw new Error("Failed to delete product");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      setAlertDialog({
+        isOpen: true,
+        type: "success",
+        title: "Success!",
+        message: "Product deleted successfully!",
+      });
+    },
+    onError: () => {
+      setAlertDialog({
+        isOpen: true,
+        type: "error",
+        title: "Error!",
+        message: "Failed to delete product. Please try again.",
+      });
     },
   });
 
-  const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this product?")) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = (id: number, name: string) => {
+    setAlertDialog({
+      isOpen: true,
+      type: "confirm",
+      title: "Delete Product",
+      message: `Are you sure you want to delete "${name}"?\n\nThis action cannot be undone.`,
+      onConfirm: () => deleteMutation.mutate(id),
+    });
   };
 
   return (
@@ -122,8 +157,9 @@ export default function ProductsPage() {
                         <Pencil className="w-4 h-4" />
                       </Link>
                       <button
-                        onClick={() => handleDelete(product.id)}
+                        onClick={() => handleDelete(product.id, product.name)}
                         className="text-red-600 hover:text-red-900"
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -142,6 +178,17 @@ export default function ProductsPage() {
           </table>
         </div>
       )}
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        onConfirm={alertDialog.onConfirm}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

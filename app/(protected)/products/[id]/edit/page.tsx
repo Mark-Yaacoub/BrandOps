@@ -132,10 +132,12 @@ export default function EditProductPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Product Name <span className="text-red-500">*</span>
+              <span className="text-gray-400 text-xs ml-2">({formData.name.length}/100)</span>
             </label>
             <input
               type="text"
               required
+              maxLength={100}
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
@@ -146,8 +148,10 @@ export default function EditProductPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Description
+              <span className="text-gray-400 text-xs ml-2">({formData.description.length}/1000)</span>
             </label>
             <textarea
+              maxLength={1000}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
@@ -159,8 +163,10 @@ export default function EditProductPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Formula
+              <span className="text-gray-400 text-xs ml-2">({formData.formula.length}/2000)</span>
             </label>
             <textarea
+              maxLength={2000}
               value={formData.formula}
               onChange={(e) => setFormData({ ...formData, formula: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"

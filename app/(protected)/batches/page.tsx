@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import AlertDialog from "@/app/components/AlertDialog";
 
 interface Batch {
   id: number;
@@ -20,6 +22,18 @@ interface Batch {
 
 export default function BatchesPage() {
   const queryClient = useQueryClient();
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    type: "confirm" | "success" | "error";
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    type: "confirm",
+    title: "",
+    message: "",
+  });
 
   const { data, isLoading } = useQuery<{ success: boolean; data: Batch[] }>({
     queryKey: ["batches"],
@@ -34,17 +48,38 @@ export default function BatchesPage() {
       const res = await fetch(`/api/batches/${id}`, {
         method: "DELETE",
       });
+      if (!res.ok) {
+        throw new Error("Failed to delete batch");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["batches"] });
+      setAlertDialog({
+        isOpen: true,
+        type: "success",
+        title: "Success!",
+        message: "Batch deleted successfully!",
+      });
+    },
+    onError: () => {
+      setAlertDialog({
+        isOpen: true,
+        type: "error",
+        title: "Error!",
+        message: "Failed to delete batch. Please try again.",
+      });
     },
   });
 
-  const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this batch?")) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = (id: number, batchNumber: string) => {
+    setAlertDialog({
+      isOpen: true,
+      type: "confirm",
+      title: "Delete Batch",
+      message: `Are you sure you want to delete batch "${batchNumber}"?\n\nThis action cannot be undone.`,
+      onConfirm: () => deleteMutation.mutate(id),
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -137,8 +172,9 @@ export default function BatchesPage() {
                         <Pencil className="w-4 h-4" />
                       </Link>
                       <button
-                        onClick={() => handleDelete(batch.id)}
+                        onClick={() => handleDelete(batch.id, batch.batchNumber)}
                         className="text-red-600 hover:text-red-900"
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -157,6 +193,17 @@ export default function BatchesPage() {
           </table>
         </div>
       )}
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        onConfirm={alertDialog.onConfirm}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }
