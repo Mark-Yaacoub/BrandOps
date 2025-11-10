@@ -13,6 +13,54 @@ export async function GET(
       include: {
         product: true,
         batch: true,
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        comments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            mentions: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        mentions: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -41,7 +89,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, description, status, priority, dueDate, productId, batchId } = body;
+    const { title, description, status, priority, dueDate, productId, batchId, assignedToId } = body;
 
     const task = await prisma.task.update({
       where: { id: parseInt(id) },
@@ -53,10 +101,25 @@ export async function PUT(
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
         ...(productId !== undefined && { productId: productId ? parseInt(productId) : null }),
         ...(batchId !== undefined && { batchId: batchId ? parseInt(batchId) : null }),
+        ...(assignedToId !== undefined && { assignedToId: assignedToId ? parseInt(assignedToId) : null }),
       },
       include: {
         product: true,
         batch: true,
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 

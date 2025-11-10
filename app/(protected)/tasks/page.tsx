@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import Link from "next/link";
 import { 
   Plus, 
   Pencil, 
@@ -16,7 +17,10 @@ import {
   Clock,
   AlertCircle,
   SlidersHorizontal,
-  GripVertical
+  GripVertical,
+  Eye,
+  MessageSquare,
+  User
 } from "lucide-react";
 import { format } from "date-fns";
 import AlertDialog from "@/app/components/AlertDialog";
@@ -40,6 +44,7 @@ interface Filters {
   priority: string;
   productId: string;
   batchId: string;
+  assignedTo: string; // "all" | "me" | userId
 }
 
 export default function TasksPage() {
@@ -47,10 +52,12 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<"all" | "my">("all");
   const [filters, setFilters] = useState<Filters>({
     priority: "all",
     productId: "all",
     batchId: "all",
+    assignedTo: "all",
   });
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean;
@@ -82,7 +89,11 @@ export default function TasksPage() {
     queryKey: ["tasks"],
     queryFn: async () => {
       const res = await fetch("/api/tasks");
-      return res.json();
+      const json = await res.json();
+      console.log("Tasks API Response:", json);
+      console.log("Tasks data:", json.data);
+      console.log("Tasks count:", json.data?.length);
+      return json;
     },
   });
 
@@ -101,6 +112,27 @@ export default function TasksPage() {
       return res.json();
     },
   });
+
+  const { data: usersData } = useQuery({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const res = await fetch("/api/users");
+      return res.json();
+    },
+  });
+
+  const { data: currentUserData } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me");
+      const json = await res.json();
+      console.log("Current User:", json.data);
+      return json;
+    },
+  });
+
+  const currentUserId = currentUserData?.data?.id;
+  console.log("Current User ID:", currentUserId);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -216,6 +248,18 @@ export default function TasksPage() {
   // Filter and search tasks
   const filteredTasks = useMemo(() => {
     let result = data?.data || [];
+    console.log("All tasks before filtering:", result.length);
+    console.log("View mode:", viewMode);
+    console.log("Current user ID for filtering:", currentUserId);
+
+    // View Mode filter (My Tasks vs All Tasks)
+    if (viewMode === "my" && currentUserId) {
+      // Show only tasks assigned to me
+      result = result.filter((task) => 
+        (task as any).assignedToId === currentUserId
+      );
+      console.log("Tasks after 'my' filter:", result.length);
+    }
 
     // Search filter
     if (searchTerm) {
@@ -242,8 +286,19 @@ export default function TasksPage() {
       result = result.filter((task) => task.batchId === parseInt(filters.batchId));
     }
 
+    // Assigned To filter
+    if (filters.assignedTo !== "all" && currentUserId) {
+      if (filters.assignedTo === "me") {
+        result = result.filter((task) => (task as any).assignedToId === currentUserId);
+      } else if (filters.assignedTo === "unassigned") {
+        result = result.filter((task) => !(task as any).assignedToId);
+      } else {
+        result = result.filter((task) => (task as any).assignedToId === parseInt(filters.assignedTo));
+      }
+    }
+
     return result;
-  }, [data?.data, searchTerm, filters]);
+  }, [data?.data, searchTerm, filters, viewMode, currentUserId]);
 
   // Group tasks by status for Kanban
   const tasksByStatus = useMemo(() => {
@@ -268,15 +323,19 @@ export default function TasksPage() {
       priority: "all",
       productId: "all",
       batchId: "all",
+      assignedTo: "all",
     });
     setSearchTerm("");
+    setViewMode("all");
   };
 
   const hasActiveFilters = 
     searchTerm || 
+    viewMode === "my" ||
     filters.priority !== "all" || 
     filters.productId !== "all" || 
-    filters.batchId !== "all";
+    filters.batchId !== "all" ||
+    filters.assignedTo !== "all";
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -303,13 +362,39 @@ export default function TasksPage() {
           <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
           <p className="text-gray-500 mt-1">Manage and track tasks</p>
         </div>
-        <button
-          onClick={() => openModal()}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Add Task
-        </button>
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="bg-white border border-gray-300 rounded-lg p-1 flex">
+            <button
+              onClick={() => setViewMode("all")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "all"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:text-gray-900"
+              }`}
+            >
+              All Tasks
+            </button>
+            <button
+              onClick={() => setViewMode("my")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "my"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:text-gray-900"
+              }`}
+            >
+              My Tasks
+            </button>
+          </div>
+
+          <Link
+            href="/tasks/new"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Add Task
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -321,7 +406,9 @@ export default function TasksPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{totalTasks}</p>
-              <p className="text-sm text-gray-500">Total Tasks</p>
+              <p className="text-sm text-gray-500">
+                {viewMode === "my" ? "My Total" : "Total Tasks"}
+              </p>
             </div>
           </div>
         </div>
@@ -397,7 +484,7 @@ export default function TasksPage() {
         {/* Filters Panel */}
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                 <select
@@ -409,6 +496,22 @@ export default function TasksPage() {
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned To</label>
+                <select
+                  value={filters.assignedTo}
+                  onChange={(e) => setFilters({ ...filters, assignedTo: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900"
+                >
+                  <option value="all">All Users</option>
+                  <option value="me">Assigned to Me</option>
+                  <option value="unassigned">Unassigned</option>
+                  {usersData?.data?.map((user: any) => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -442,10 +545,16 @@ export default function TasksPage() {
             </div>
 
             {hasActiveFilters && (
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex items-center justify-between">
+                {viewMode === "my" && (
+                  <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-md text-sm">
+                    <User className="w-4 h-4" />
+                    Viewing: My Tasks Only
+                  </div>
+                )}
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium ml-auto"
                 >
                   Clear all filters
                 </button>
@@ -559,21 +668,31 @@ export default function TasksPage() {
                               </div>
                             )}
 
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                              <button
-                                onClick={() => openModal(task)}
-                                className="flex-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <Link
+                                href={`/tasks/${task.id}`}
+                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                               >
-                                <Pencil className="w-3 h-3 inline mr-1" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(task.id, task.title)}
-                                className="flex-1 text-sm text-red-600 hover:text-red-800 font-medium"
-                              >
-                                <Trash2 className="w-3 h-3 inline mr-1" />
-                                Delete
-                              </button>
+                                <Eye className="w-3 h-3 inline mr-1" />
+                                View
+                              </Link>
+                              <div className="flex items-center gap-3">
+                                {(task as any)._count?.comments > 0 && (
+                                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                                    <MessageSquare className="w-3 h-3" />
+                                    {(task as any)._count.comments}
+                                  </div>
+                                )}
+                                {(task as any).assignedTo && (
+                                  <div 
+                                    className="flex items-center gap-1 text-xs text-gray-600" 
+                                    title={`Assigned to ${(task as any).assignedTo.name}`}
+                                  >
+                                    <User className="w-3 h-3" />
+                                    <span className="max-w-[80px] truncate">{(task as any).assignedTo.name}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -660,21 +779,31 @@ export default function TasksPage() {
                               </div>
                             )}
 
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                              <button
-                                onClick={() => openModal(task)}
-                                className="flex-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <Link
+                                href={`/tasks/${task.id}`}
+                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                               >
-                                <Pencil className="w-3 h-3 inline mr-1" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(task.id, task.title)}
-                                className="flex-1 text-sm text-red-600 hover:text-red-800 font-medium"
-                              >
-                                <Trash2 className="w-3 h-3 inline mr-1" />
-                                Delete
-                              </button>
+                                <Eye className="w-3 h-3 inline mr-1" />
+                                View
+                              </Link>
+                              <div className="flex items-center gap-3">
+                                {(task as any)._count?.comments > 0 && (
+                                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                                    <MessageSquare className="w-3 h-3" />
+                                    {(task as any)._count.comments}
+                                  </div>
+                                )}
+                                {(task as any).assignedTo && (
+                                  <div 
+                                    className="flex items-center gap-1 text-xs text-gray-600" 
+                                    title={`Assigned to ${(task as any).assignedTo.name}`}
+                                  >
+                                    <User className="w-3 h-3" />
+                                    <span className="max-w-[80px] truncate">{(task as any).assignedTo.name}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -761,21 +890,31 @@ export default function TasksPage() {
                               </div>
                             )}
 
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                              <button
-                                onClick={() => openModal(task)}
-                                className="flex-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <Link
+                                href={`/tasks/${task.id}`}
+                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                               >
-                                <Pencil className="w-3 h-3 inline mr-1" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(task.id, task.title)}
-                                className="flex-1 text-sm text-red-600 hover:text-red-800 font-medium"
-                              >
-                                <Trash2 className="w-3 h-3 inline mr-1" />
-                                Delete
-                              </button>
+                                <Eye className="w-3 h-3 inline mr-1" />
+                                View
+                              </Link>
+                              <div className="flex items-center gap-3">
+                                {(task as any)._count?.comments > 0 && (
+                                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                                    <MessageSquare className="w-3 h-3" />
+                                    {(task as any)._count.comments}
+                                  </div>
+                                )}
+                                {(task as any).assignedTo && (
+                                  <div 
+                                    className="flex items-center gap-1 text-xs text-gray-600" 
+                                    title={`Assigned to ${(task as any).assignedTo.name}`}
+                                  >
+                                    <User className="w-3 h-3" />
+                                    <span className="max-w-[80px] truncate">{(task as any).assignedTo.name}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}

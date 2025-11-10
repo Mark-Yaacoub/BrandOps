@@ -110,18 +110,49 @@ model Expense {
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  status      String    @default("pending") // pending, in-progress, completed
-  priority    String    @default("medium") // low, medium, high
-  dueDate     DateTime?
-  productId   Int?
-  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
-  batchId     Int?
-  batch       Batch?    @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           Int           @id @default(autoincrement())
+  title        String
+  description  String?
+  status       String        @default("pending") // pending, in-progress, completed
+  priority     String        @default("medium") // low, medium, high
+  dueDate      DateTime?
+  productId    Int?
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  batchId      Int?
+  batch        Batch?        @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  assignedToId Int?
+  assignedTo   User?         @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById  Int?
+  createdBy    User?         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  comments     TaskComment[]
+  mentions     TaskMention[]
+}
+
+model TaskComment {
+  id        Int           @id @default(autoincrement())
+  taskId    Int
+  task      Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  mentions  TaskMention[]
+}
+
+model TaskMention {
+  id        Int          @id @default(autoincrement())
+  taskId    Int
+  task      Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  commentId Int?
+  comment   TaskComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([taskId, commentId, userId])
 }
 
 model User {
@@ -133,6 +164,10 @@ model User {
   isActive            Boolean               @default(true)
   createdAt           DateTime              @default(now())
   passwordResetTokens PasswordResetToken[]
+  assignedTasks       Task[]                @relation("TaskAssignee")
+  createdTasks        Task[]                @relation("TaskCreator")
+  comments            TaskComment[]
+  mentions            TaskMention[]
 }
 
 model PasswordResetToken {

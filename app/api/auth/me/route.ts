@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     // Try to get token from Authorization header or cookie
     const authHeader = request.headers.get("authorization");
-    const cookieToken = request.cookies.get("auth_token")?.value;
+    const cookieToken = request.cookies.get("token")?.value; // Changed from auth_token to token
     
     let token: string | null = null;
     
