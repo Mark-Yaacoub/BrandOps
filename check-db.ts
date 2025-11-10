@@ -24,7 +24,7 @@ async function checkDatabase() {
     // Check Expenses
     const expenses = await prisma.expense.findMany();
     console.log(`\n✅ Expenses table: ${expenses.length} records`);
-    expenses.forEach((e: { description: string | null; amount: number }) => console.log(`   - ${e.description}: $${e.amount}`));
+    expenses.forEach((e: { type: string; amount: number }) => console.log(`   - ${e.type}: $${e.amount}`));
 
     // Check Tasks
     const tasks = await prisma.task.findMany();
