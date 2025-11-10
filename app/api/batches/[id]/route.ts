@@ -1,0 +1,89 @@
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/src/lib/db";
+
+// GET /api/batches/:id - Get a single batch
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const batch = await prisma.batch.findUnique({
+      where: { id: parseInt(params.id) },
+      include: {
+        product: true,
+        expenses: true,
+        tasks: true,
+      },
+    });
+
+    if (!batch) {
+      return NextResponse.json(
+        { success: false, error: "Batch not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: batch });
+  } catch (error) {
+    console.error("Error fetching batch:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch batch" },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/batches/:id - Update a batch
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json();
+    const { productId, name, quantity, cost, status, startDate, endDate } = body;
+
+    const batch = await prisma.batch.update({
+      where: { id: parseInt(params.id) },
+      data: {
+        ...(productId !== undefined && { productId: parseInt(productId) }),
+        ...(name !== undefined && { name }),
+        ...(quantity !== undefined && { quantity: parseInt(quantity) }),
+        ...(cost !== undefined && { cost: parseFloat(cost) }),
+        ...(status !== undefined && { status }),
+        ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
+        ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+      },
+      include: {
+        product: true,
+      },
+    });
+
+    return NextResponse.json({ success: true, data: batch });
+  } catch (error) {
+    console.error("Error updating batch:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to update batch" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/batches/:id - Delete a batch
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await prisma.batch.delete({
+      where: { id: parseInt(params.id) },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting batch:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to delete batch" },
+      { status: 500 }
+    );
+  }
+}
