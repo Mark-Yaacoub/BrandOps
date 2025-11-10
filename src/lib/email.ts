@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import nodemailer from "nodemailer";
 
 interface EmailOptions {
   to: string;
@@ -7,27 +7,31 @@ interface EmailOptions {
   text?: string;
 }
 
-// Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY || 're_123456789');
+// Create transporter with SMTP configuration
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.hostinger.com",
+  port: parseInt(process.env.SMTP_PORT || "465"),
+  secure: process.env.SMTP_SECURE === "true" || true,
+  auth: {
+    user: process.env.SMTP_USER || "support@mangesystem.com",
+    pass: process.env.SMTP_PASS || "O!SfOhjs0",
+  },
+});
 
 /**
- * Send an email using Resend API
+ * Send an email using SMTP
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'BrandOps <onboarding@resend.dev>', // Use your verified domain
+    const info = await transporter.sendMail({
+      from: `"BrandOps" <${process.env.SMTP_USER || "support@mangesystem.com"}>`,
       to: options.to,
       subject: options.subject,
+      text: options.text || options.html.replace(/<[^>]*>/g, ""),
       html: options.html,
     });
 
-    if (error) {
-      console.error("Error sending email:", error);
-      return false;
-    }
-
-    console.log("Email sent successfully:", data?.id);
+    console.log("Email sent successfully:", info.messageId);
     return true;
   } catch (error) {
     console.error("Error sending email:", error);
@@ -167,10 +171,24 @@ export async function sendPasswordResetEmail(
 /**
  * Send password change confirmation email
  */
+/**
+ * Send password change confirmation email
+ */
 export async function sendPasswordChangeConfirmation(
   to: string,
-  name: string
+  name: string,
+  newPassword?: string
 ): Promise<boolean> {
+  const passwordInfo = newPassword
+    ? `
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
+      <p style="margin: 0 0 10px 0;"><strong>Your New Password:</strong></p>
+      <code style="background: #fff; padding: 8px 12px; border-radius: 4px; font-size: 16px; display: inline-block; font-family: monospace;">${newPassword}</code>
+      <p style="margin: 10px 0 0 0; font-size: 14px; color: #92400e;">Please log in and change this password to something more secure.</p>
+    </div>
+    `
+    : '';
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -180,6 +198,15 @@ export async function sendPasswordChangeConfirmation(
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: #10b981; color: white; padding: 20px; text-align: center; }
           .content { padding: 30px; background: #f9fafb; }
+          .button { 
+            display: inline-block; 
+            padding: 12px 30px; 
+            background: #10b981; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            margin: 20px 0;
+          }
         </style>
       </head>
       <body>
@@ -189,8 +216,12 @@ export async function sendPasswordChangeConfirmation(
           </div>
           <div class="content">
             <h2>Hello ${name},</h2>
-            <p>Your password has been successfully changed.</p>
-            <p>If you didn't make this change, please contact support immediately.</p>
+            <p>Your password has been successfully changed by an administrator.</p>
+            ${passwordInfo}
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/login" class="button">
+              Log In to BrandOps
+            </a>
+            <p>If you didn't request this change, please contact support immediately.</p>
             <p>Best regards,<br>The BrandOps Team</p>
           </div>
         </div>
