@@ -22,6 +22,7 @@ model Product {
   batches      BatchProduct[]
   expenses     Expense[]
   tasks        Task[]
+  sales        Sale[]
 }
 
 model Batch {
@@ -37,6 +38,7 @@ model Batch {
   products              BatchProduct[]
   expenses              Expense[]
   tasks                 Task[]
+  sales                 Sale[]
 }
 
 model BatchProduct {
@@ -50,6 +52,36 @@ model BatchProduct {
   createdAt DateTime @default(now())
 
   @@unique([batchId, productId])
+}
+
+model SalesLocation {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  address     String?
+  city        String?
+  phone       String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sales       Sale[]
+}
+
+model Sale {
+  id              Int            @id @default(autoincrement())
+  batchId         Int
+  batch           Batch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  productId       Int
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locationId      Int
+  location        SalesLocation  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+  saleDate        DateTime
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
 
 model Expense {

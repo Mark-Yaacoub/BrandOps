@@ -10,12 +10,16 @@ import {
   CheckSquare,
   Users,
   LogOut,
+  MapPin,
+  ShoppingCart,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/products", label: "Products", icon: Package },
   { href: "/batches", label: "Batches", icon: Layers },
+  { href: "/sales-locations", label: "Sales Locations", icon: MapPin },
+  { href: "/sales", label: "Sales", icon: ShoppingCart },
   { href: "/expenses", label: "Expenses", icon: DollarSign },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/users", label: "Users", icon: Users },
