@@ -6,9 +6,7 @@ import {
   Plus, 
   Pencil, 
   Trash2, 
-  X, 
-  Search, 
-  Filter,
+  Search,
   DollarSign,
   Calendar,
   Package,
@@ -17,6 +15,8 @@ import {
   ArrowUpDown
 } from "lucide-react";
 import { format } from "date-fns";
+import Link from "next/link";
+import AlertDialog from "@/app/components/AlertDialog";
 
 interface Expense {
   id: number;
@@ -42,8 +42,6 @@ interface Filters {
 }
 
 export default function ExpensesPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<"date" | "amount" | "type">("date");
@@ -57,14 +55,18 @@ export default function ExpensesPage() {
     startDate: "",
     endDate: "",
   });
-  
-  const [formData, setFormData] = useState({
-    type: "",
-    amount: "",
-    date: "",
-    notes: "",
-    batchId: "",
-    productId: "",
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "confirm" | "success" | "error" | "warning";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "confirm",
   });
 
   const queryClient = useQueryClient();
@@ -93,39 +95,10 @@ export default function ExpensesPage() {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const res = await fetch("/api/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      closeModal();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
-      const res = await fetch(`/api/expenses/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      closeModal();
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete expense");
       return res.json();
     },
     onSuccess: () => {
@@ -133,36 +106,14 @@ export default function ExpensesPage() {
     },
   });
 
-  const openModal = (expense?: Expense) => {
-    if (expense) {
-      setEditingExpense(expense);
-      setFormData({
-        type: expense.type,
-        amount: expense.amount.toString(),
-        date: expense.date.split('T')[0],
-        notes: expense.notes || "",
-        batchId: expense.batchId?.toString() || "",
-        productId: expense.productId?.toString() || "",
-      });
-    } else {
-      setEditingExpense(null);
-      setFormData({ type: "", amount: "", date: "", notes: "", batchId: "", productId: "" });
-    }
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingExpense(null);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingExpense) {
-      updateMutation.mutate({ id: editingExpense.id, data: formData });
-    } else {
-      createMutation.mutate(formData);
-    }
+  const handleDelete = (id: number, expenseName: string) => {
+    setAlertDialog({
+      isOpen: true,
+      title: "Delete Expense",
+      message: `Are you sure you want to delete "${expenseName}"?\n\nThis action cannot be undone.`,
+      type: "confirm",
+      onConfirm: () => deleteMutation.mutate(id),
+    });
   };
 
   // Get unique expense types
@@ -289,13 +240,13 @@ export default function ExpensesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Expenses</h1>
           <p className="text-gray-500 mt-1">Track and manage business expenses</p>
         </div>
-        <button
-          onClick={() => openModal()}
+        <Link
+          href="/expenses/new"
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Add Expense
-        </button>
+        </Link>
       </div>
 
       {/* Stats Cards */}
@@ -593,19 +544,15 @@ export default function ExpensesPage() {
                         {expense.notes || <span className="text-gray-400">-</span>}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => openModal(expense)}
+                        <Link
+                          href={`/expenses/${expense.id}/edit`}
                           className="text-blue-600 hover:text-blue-900 mr-4 inline-flex items-center gap-1 transition-colors"
                           title="Edit expense"
                         >
                           <Pencil className="w-4 h-4" />
-                        </button>
+                        </Link>
                         <button
-                          onClick={() => {
-                            if (confirm("Are you sure you want to delete this expense?")) {
-                              deleteMutation.mutate(expense.id);
-                            }
-                          }}
+                          onClick={() => handleDelete(expense.id, expense.type)}
                           className="text-red-600 hover:text-red-900 inline-flex items-center gap-1 transition-colors"
                           title="Delete expense"
                         >
@@ -621,140 +568,16 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingExpense ? "Edit Expense" : "Add New Expense"}
-              </h2>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Expense Type <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900"
-                  placeholder="e.g., Materials, Labor, Shipping, Marketing"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Related Product <span className="text-gray-400 text-xs">(Optional)</span>
-                </label>
-                <select
-                  value={formData.productId}
-                  onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900"
-                >
-                  <option value="">No product</option>
-                  {productsData?.data?.map((product: any) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Related Batch <span className="text-gray-400 text-xs">(Optional)</span>
-                </label>
-                <select
-                  value={formData.batchId}
-                  onChange={(e) => setFormData({ ...formData, batchId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900"
-                >
-                  <option value="">No batch</option>
-                  {batchesData?.data?.map((batch: any) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes <span className="text-gray-400 text-xs">(Optional)</span>
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900"
-                  rows={3}
-                  placeholder="Add any additional details..."
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                >
-                  {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
-                    : editingExpense
-                    ? "Update Expense"
-                    : "Add Expense"}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        onConfirm={alertDialog.onConfirm}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }
