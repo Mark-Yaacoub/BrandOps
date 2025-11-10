@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/src/lib/db";
 import { verifyJwt } from "@/src/lib/auth";
 import { cookies } from "next/headers";
+import { sendTaskAssignmentEmail, sendTaskMentionEmail } from "@/src/lib/email";
 
 // GET /api/tasks - Get all tasks
 export async function GET() {
@@ -138,6 +139,44 @@ export async function POST(request: NextRequest) {
 
       return task;
     });
+
+    // Send emails after task creation (non-blocking)
+    const taskUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/tasks/${result.id}`;
+    
+    // Send assignment email
+    if (result.assignedTo) {
+      const assignedByName = result.createdBy?.name || 'System';
+      
+      sendTaskAssignmentEmail({
+        to: result.assignedTo.email,
+        userName: result.assignedTo.name,
+        taskTitle: result.title,
+        taskDescription: result.description || undefined,
+        taskUrl,
+        assignedBy: assignedByName,
+      }).catch(err => console.error('Failed to send assignment email:', err));
+    }
+
+    // Send mention emails
+    if (mentionedUserIds && mentionedUserIds.length > 0) {
+      const mentionedUsers = await prisma.user.findMany({
+        where: { id: { in: mentionedUserIds } },
+        select: { id: true, name: true, email: true },
+      });
+
+      const mentionedByName = result.createdBy?.name || 'System';
+      
+      for (const user of mentionedUsers) {
+        sendTaskMentionEmail({
+          to: user.email,
+          userName: user.name,
+          taskTitle: result.title,
+          mentionedBy: mentionedByName,
+          taskUrl,
+          comment: result.description || undefined,
+        }).catch(err => console.error('Failed to send mention email:', err));
+      }
+    }
 
     // TODO: Send email notifications
 

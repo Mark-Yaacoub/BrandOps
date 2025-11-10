@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/src/lib/db";
+import { sendTaskMentionEmail } from "@/src/lib/email";
 
 // GET /api/tasks/:id/comments - Get all comments for a task
 export async function GET(
@@ -120,8 +121,33 @@ export async function POST(
       return completeComment;
     });
 
-    // TODO: Send email notifications to mentioned users
-    // This will be implemented in the email notification step
+    // Send email notifications to mentioned users (non-blocking)
+    if (mentionedUserIds && mentionedUserIds.length > 0) {
+      const task = await prisma.task.findUnique({
+        where: { id: parseInt(id) },
+        select: { id: true, title: true },
+      });
+
+      const mentionedUsers = await prisma.user.findMany({
+        where: { id: { in: mentionedUserIds } },
+        select: { id: true, name: true, email: true },
+      });
+
+      const taskUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/tasks/${id}`;
+
+      if (task && result) {
+        for (const user of mentionedUsers) {
+          sendTaskMentionEmail({
+            to: user.email,
+            userName: user.name,
+            taskTitle: task.title,
+            mentionedBy: result.user.name,
+            taskUrl,
+            comment: result.content,
+          }).catch(err => console.error('Failed to send mention email:', err));
+        }
+      }
+    }
 
     return NextResponse.json({ success: true, data: result });
   } catch (error) {

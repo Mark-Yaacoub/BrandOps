@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { Resend } from 'resend';
 
 interface EmailOptions {
   to: string;
@@ -7,31 +7,27 @@ interface EmailOptions {
   text?: string;
 }
 
-// Create transporter with SMTP configuration
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.hostinger.com",
-  port: parseInt(process.env.SMTP_PORT || "465"),
-  secure: process.env.SMTP_SECURE === "true" || true, // true for port 465
-  auth: {
-    user: process.env.userEmail || "support@mangesystem.com",
-    pass: process.env.passEmail || "O!SfOhjs0",
-  },
-});
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEY || 're_123456789');
 
 /**
- * Send an email
+ * Send an email using Resend API
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    const info = await transporter.sendMail({
-      from: `"BrandOps" <${process.env.userEmail || "support@mangesystem.com"}>`,
+    const { data, error } = await resend.emails.send({
+      from: 'BrandOps <onboarding@resend.dev>', // Use your verified domain
       to: options.to,
       subject: options.subject,
-      text: options.text || options.html.replace(/<[^>]*>/g, ""), // Strip HTML for text version
       html: options.html,
     });
 
-    console.log("Email sent:", info.messageId);
+    if (error) {
+      console.error("Error sending email:", error);
+      return false;
+    }
+
+    console.log("Email sent successfully:", data?.id);
     return true;
   } catch (error) {
     console.error("Error sending email:", error);
@@ -205,6 +201,123 @@ export async function sendPasswordChangeConfirmation(
   return sendEmail({
     to,
     subject: "Password Changed - BrandOps",
+    html,
+  });
+}
+
+/**
+ * Send task assignment email
+ */
+export async function sendTaskAssignmentEmail({
+  to,
+  userName,
+  taskTitle,
+  taskDescription,
+  taskUrl,
+  assignedBy,
+}: {
+  to: string;
+  userName: string;
+  taskTitle: string;
+  taskDescription?: string;
+  taskUrl: string;
+  assignedBy: string;
+}): Promise<boolean> {
+  const html = `
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #4F46E5; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+          .content { padding: 30px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+          .task-card { background: white; padding: 20px; border-left: 4px solid #4F46E5; margin: 20px 0; border-radius: 4px; }
+          .btn { display: inline-block; background: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px; }
+          .footer { margin-top: 30px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>New Task Assigned</h1>
+          </div>
+          <div class="content">
+            <p>Hi <strong>${userName}</strong>,</p>
+            <p>${assignedBy} has assigned you a new task:</p>
+            <div class="task-card">
+              <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #1f2937;">${taskTitle}</h2>
+              ${taskDescription ? `<p style="margin: 0; color: #6b7280;">${taskDescription}</p>` : ''}
+            </div>
+            <a href="${taskUrl}" class="btn">View Task Details</a>
+            <p class="footer">This is an automated email from BrandOps. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to,
+    subject: `New Task Assigned: ${taskTitle}`,
+    html,
+  });
+}
+
+/**
+ * Send task mention email
+ */
+export async function sendTaskMentionEmail({
+  to,
+  userName,
+  taskTitle,
+  mentionedBy,
+  taskUrl,
+  comment,
+}: {
+  to: string;
+  userName: string;
+  taskTitle: string;
+  mentionedBy: string;
+  taskUrl: string;
+  comment?: string;
+}): Promise<boolean> {
+  const html = `
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #059669; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+          .content { padding: 30px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+          .task-card { background: white; padding: 20px; border-left: 4px solid #059669; margin: 20px 0; border-radius: 4px; }
+          .comment { margin: 10px 0 0 0; padding: 10px; background: #f3f4f6; border-radius: 4px; color: #4b5563; }
+          .btn { display: inline-block; background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px; }
+          .footer { margin-top: 30px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>You were mentioned</h1>
+          </div>
+          <div class="content">
+            <p>Hi <strong>${userName}</strong>,</p>
+            <p><strong>${mentionedBy}</strong> mentioned you in a task:</p>
+            <div class="task-card">
+              <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #1f2937;">${taskTitle}</h2>
+              ${comment ? `<p class="comment">"${comment}"</p>` : ''}
+            </div>
+            <a href="${taskUrl}" class="btn">View Task Details</a>
+            <p class="footer">This is an automated email from BrandOps. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to,
+    subject: `You were mentioned in: ${taskTitle}`,
     html,
   });
 }
