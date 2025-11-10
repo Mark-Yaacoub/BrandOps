@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/src/lib/db";
 import { sendTaskMentionEmail } from "@/src/lib/email";
+import { cookies } from "next/headers";
+import { verifyJwt } from "@/src/lib/auth";
 
 // GET /api/tasks/:id/comments - Get all comments for a task
 export async function GET(
@@ -53,11 +55,32 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { content, userId, mentionedUserIds } = body;
+    const { content, mentionedUserIds } = body;
 
-    if (!content || !userId) {
+    // Get current user from JWT token
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    
+    if (!token) {
       return NextResponse.json(
-        { success: false, error: "Content and userId are required" },
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const decoded = verifyJwt(token);
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json(
+        { success: false, error: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    const currentUserId = decoded.userId;
+
+    if (!content) {
+      return NextResponse.json(
+        { success: false, error: "Content is required" },
         { status: 400 }
       );
     }
@@ -68,7 +91,7 @@ export async function POST(
         data: {
           content,
           taskId: parseInt(id),
-          userId: parseInt(userId),
+          userId: currentUserId,
         },
         include: {
           user: {
