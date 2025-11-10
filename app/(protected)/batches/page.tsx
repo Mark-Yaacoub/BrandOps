@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Filter, X, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import AlertDialog from "@/app/components/AlertDialog";
@@ -459,8 +459,16 @@ export default function BatchesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex gap-2">
                         <Link
+                          href={`/batches/${batch.id}/report`}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="View Report"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Link>
+                        <Link
                           href={`/batches/${batch.id}/edit`}
                           className="text-blue-600 hover:text-blue-900"
+                          title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
                         </Link>
@@ -468,6 +476,7 @@ export default function BatchesPage() {
                           onClick={() => handleDelete(batch.id, batch.name)}
                           className="text-red-600 hover:text-red-900"
                           disabled={deleteMutation.isPending}
+                          title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

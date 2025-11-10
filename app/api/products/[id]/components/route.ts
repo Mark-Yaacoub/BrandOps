@@ -62,6 +62,17 @@ export async function POST(
       },
     });
 
+    // Recalculate product total cost from all components
+    const allComponents = await prisma.productComponent.findMany({
+      where: { productId },
+    });
+    const totalCost = allComponents.reduce((sum: number, comp: any) => sum + comp.cost, 0);
+    
+    await prisma.product.update({
+      where: { id: productId },
+      data: { cost: totalCost },
+    });
+
     return NextResponse.json({ success: true, data: component });
   } catch (error) {
     console.error("Error creating product component:", error);
