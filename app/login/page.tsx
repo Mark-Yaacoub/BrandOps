@@ -105,18 +105,13 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                Don't have an account?
-              </Link>
-            </div>
-
-            <div className="text-sm">
-              <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                Forgot password?
-              </Link>
-            </div>
+          <div className="text-center">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-blue-600 hover:text-blue-500 font-medium"
+            >
+              Forgot your password?
+            </Link>
           </div>
 
           <div>
@@ -129,6 +124,12 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Internal system - Contact your administrator for account access
+          </p>
+        </div>
       </div>
     </div>
   );

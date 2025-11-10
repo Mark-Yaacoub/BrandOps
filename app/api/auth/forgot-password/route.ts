@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/src/lib/db";
-import { generateResetToken } from "@/src/lib/auth";
-import { sendPasswordResetEmail } from "@/src/lib/email";
+import { hashPassword, generateTempPassword } from "@/src/lib/auth";
+import { sendPasswordChangeConfirmation } from "@/src/lib/email";
 
-// POST /api/auth/forgot-password - Request password reset
+// POST /api/auth/forgot-password - Reset password and send new one via email
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -23,6 +23,11 @@ export async function POST(request: NextRequest) {
     // Find user
     const user = await prisma.user.findUnique({
       where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
     });
 
     // Always return success to prevent email enumeration
@@ -30,46 +35,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: true,
-          message: "If an account exists with this email, a password reset link has been sent",
+          message: "If an account exists with this email, a new password has been sent.",
         },
         { status: 200 }
       );
     }
 
-    // Generate reset token
-    const resetToken = generateResetToken();
-    const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
+    // Generate new temporary password
+    const newPassword = generateTempPassword();
+    const hashedPassword = await hashPassword(newPassword);
 
-    // Delete any existing reset tokens for this user
-    await prisma.passwordResetToken.deleteMany({
-      where: { userId: user.id },
+    // Update user password
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
     });
 
-    // Create new reset token
-    await prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        token: resetToken,
-        expiresAt,
-      },
-    });
-
-    // Send password reset email
-    await sendPasswordResetEmail(user.email, user.name, resetToken);
+    // Send email with new password
+    await sendPasswordChangeConfirmation(user.email, user.name, newPassword);
 
     return NextResponse.json(
       {
         success: true,
-        message: "If an account exists with this email, a password reset link has been sent",
+        message: "A new password has been sent to your email address.",
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error requesting password reset:", error);
+    console.error("Error in forgot password:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to process password reset request",
+        message: "Failed to reset password. Please try again later.",
       },
       { status: 500 }
     );
