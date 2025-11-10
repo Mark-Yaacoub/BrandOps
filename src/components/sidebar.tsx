@@ -12,6 +12,7 @@ import {
   LogOut,
   MapPin,
   ShoppingCart,
+  Bot,
 } from "lucide-react";
 
 const navItems = [
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/expenses", label: "Expenses", icon: DollarSign },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/users", label: "Users", icon: Users },
+  { href: "/ai-assistant", label: "AI Assistant", icon: Bot },
 ];
 
 export function Sidebar() {
