@@ -11,33 +11,45 @@ datasource db {
 }
 
 model Product {
-  id          Int       @id @default(autoincrement())
-  name        String
-  description String?
-  formula     String?
-  cost        Float
-  price       Float
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  batches     Batch[]
-  expenses    Expense[]
-  tasks       Task[]
+  id           Int            @id @default(autoincrement())
+  name         String
+  description  String?
+  formula      String?
+  cost         Float
+  price        Float
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  batches      BatchProduct[]
+  expenses     Expense[]
+  tasks        Task[]
 }
 
 model Batch {
-  id        Int       @id @default(autoincrement())
+  id                    Int            @id @default(autoincrement())
+  name                  String
+  targetSegments        String?        // Target customer segments
+  targetSalesLocations  String?        // Target sales locations
+  status                String         @default("pending") // pending, in-progress, completed
+  startDate             DateTime?
+  endDate               DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  products              BatchProduct[]
+  expenses              Expense[]
+  tasks                 Task[]
+}
+
+model BatchProduct {
+  id        Int      @id @default(autoincrement())
+  batchId   Int
+  batch     Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
   productId Int
-  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name      String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
-  cost      Float
-  status    String    @default("pending") // pending, in-progress, completed
-  startDate DateTime?
-  endDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  expenses  Expense[]
-  tasks     Task[]
+  cost      Float    // Cost for this product in this batch
+  createdAt DateTime @default(now())
+
+  @@unique([batchId, productId])
 }
 
 model Expense {

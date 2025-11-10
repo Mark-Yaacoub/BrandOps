@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, X, Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -17,9 +17,31 @@ interface BatchProduct {
   cost: string;
 }
 
-export default function NewBatchPage() {
+interface BatchProductData {
+  id: number;
+  productId: number;
+  quantity: number;
+  cost: number;
+  product: Product;
+}
+
+interface Batch {
+  id: number;
+  name: string;
+  products: BatchProductData[];
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+  targetSegments: string | null;
+  targetSalesLocations: string | null;
+}
+
+export default function EditBatchPage() {
   const router = useRouter();
+  const params = useParams();
   const queryClient = useQueryClient();
+  const batchId = params.id as string;
+
   const [batchNumber, setBatchNumber] = useState("");
   const [status, setStatus] = useState("pending");
   const [startDate, setStartDate] = useState("");
@@ -30,6 +52,15 @@ export default function NewBatchPage() {
     { productId: "", quantity: "", cost: "" },
   ]);
 
+  const { data: batchData, isLoading } = useQuery<{ success: boolean; data: Batch }>({
+    queryKey: ["batch", batchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/batches/${batchId}`);
+      if (!res.ok) throw new Error("Failed to fetch batch");
+      return res.json();
+    },
+  });
+
   const { data: productsData } = useQuery<{ success: boolean; data: Product[] }>({
     queryKey: ["products"],
     queryFn: async () => {
@@ -37,6 +68,28 @@ export default function NewBatchPage() {
       return res.json();
     },
   });
+
+  useEffect(() => {
+    if (batchData?.data) {
+      const batch = batchData.data;
+      setBatchNumber(batch.name || "");
+      setStatus(batch.status || "pending");
+      setStartDate(batch.startDate ? new Date(batch.startDate).toISOString().split("T")[0] : "");
+      setEndDate(batch.endDate ? new Date(batch.endDate).toISOString().split("T")[0] : "");
+      setTargetSegments(batch.targetSegments || "");
+      setTargetSalesLocations(batch.targetSalesLocations || "");
+      
+      if (batch.products && batch.products.length > 0) {
+        setProducts(
+          batch.products.map((bp) => ({
+            productId: bp.productId.toString(),
+            quantity: bp.quantity.toString(),
+            cost: bp.cost.toString(),
+          }))
+        );
+      }
+    }
+  }, [batchData]);
 
   const addProduct = () => {
     setProducts([...products, { productId: "", quantity: "", cost: "" }]);
@@ -54,9 +107,26 @@ export default function NewBatchPage() {
     setProducts(newProducts);
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch(`/api/batches/${batchId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update batch");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["batches"] });
+      queryClient.invalidateQueries({ queryKey: ["batch", batchId] });
+      router.push("/batches");
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate at least one product is selected
@@ -66,36 +136,24 @@ export default function NewBatchPage() {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const res = await fetch("/api/batches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: batchNumber,
-          products: validProducts,
-          status,
-          startDate,
-          endDate,
-          targetSegments,
-          targetSalesLocations,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to create batch");
-      }
-
-      // Invalidate queries and redirect
-      queryClient.invalidateQueries({ queryKey: ["batches"] });
-      router.push("/batches");
-    } catch (error) {
-      console.error("Error creating batch:", error);
-      alert("Failed to create batch. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    updateMutation.mutate({
+      name: batchNumber,
+      products: validProducts,
+      status,
+      startDate,
+      endDate,
+      targetSegments,
+      targetSalesLocations,
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -107,8 +165,8 @@ export default function NewBatchPage() {
           <ArrowLeft className="w-4 h-4" />
           Back to Batches
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Add New Batch</h1>
-        <p className="text-gray-500 mt-1">Create a new production batch</p>
+        <h1 className="text-3xl font-bold text-gray-900">Edit Batch</h1>
+        <p className="text-gray-500 mt-1">Update batch information</p>
       </div>
 
       <div className="bg-white rounded-lg shadow border border-gray-200 p-6 max-w-3xl">
@@ -294,10 +352,10 @@ export default function NewBatchPage() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={updateMutation.isPending}
               className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isSubmitting ? "Creating..." : "Create Batch"}
+              {updateMutation.isPending ? "Updating..." : "Update Batch"}
             </button>
             <Link
               href="/batches"
@@ -306,6 +364,12 @@ export default function NewBatchPage() {
               Cancel
             </Link>
           </div>
+
+          {updateMutation.isError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              Failed to update batch. Please try again.
+            </div>
+          )}
         </form>
       </div>
     </div>

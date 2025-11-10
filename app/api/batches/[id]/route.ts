@@ -11,7 +11,11 @@ export async function GET(
     const batch = await prisma.batch.findUnique({
       where: { id: parseInt(id) },
       include: {
-        product: true,
+        products: {
+          include: {
+            product: true,
+          },
+        },
         expenses: true,
         tasks: true,
       },
@@ -42,21 +46,38 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { productId, name, quantity, cost, status, startDate, endDate } = body;
+    const { name, products, status, startDate, endDate, targetSegments, targetSalesLocations } = body;
+
+    // Delete existing products and create new ones
+    await prisma.batchProduct.deleteMany({
+      where: { batchId: parseInt(id) },
+    });
 
     const batch = await prisma.batch.update({
       where: { id: parseInt(id) },
       data: {
-        ...(productId !== undefined && { productId: parseInt(productId) }),
         ...(name !== undefined && { name }),
-        ...(quantity !== undefined && { quantity: parseInt(quantity) }),
-        ...(cost !== undefined && { cost: parseFloat(cost) }),
         ...(status !== undefined && { status }),
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+        ...(targetSegments !== undefined && { targetSegments }),
+        ...(targetSalesLocations !== undefined && { targetSalesLocations }),
+        ...(products && {
+          products: {
+            create: products.map((p: any) => ({
+              productId: parseInt(p.productId),
+              quantity: parseInt(p.quantity),
+              cost: parseFloat(p.cost),
+            })),
+          },
+        }),
       },
       include: {
-        product: true,
+        products: {
+          include: {
+            product: true,
+          },
+        },
       },
     });
 

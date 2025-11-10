@@ -6,7 +6,11 @@ export async function GET() {
   try {
     const batches = await prisma.batch.findMany({
       include: {
-        product: true,
+        products: {
+          include: {
+            product: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -27,13 +31,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { productId, name, quantity, cost, status, startDate, endDate } = body;
+    const { name, products, status, startDate, endDate, targetSegments, targetSalesLocations } = body;
 
-    if (!productId || !name || quantity === undefined || cost === undefined) {
+    if (!name || !products || products.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "ProductId, name, quantity, and cost are required",
+          error: "Name and at least one product are required",
         },
         { status: 400 }
       );
@@ -41,16 +45,26 @@ export async function POST(request: NextRequest) {
 
     const batch = await prisma.batch.create({
       data: {
-        productId: parseInt(productId),
         name,
-        quantity: parseInt(quantity),
-        cost: parseFloat(cost),
         status: status || "pending",
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
+        targetSegments: targetSegments || null,
+        targetSalesLocations: targetSalesLocations || null,
+        products: {
+          create: products.map((p: any) => ({
+            productId: parseInt(p.productId),
+            quantity: parseInt(p.quantity),
+            cost: parseFloat(p.cost),
+          })),
+        },
       },
       include: {
-        product: true,
+        products: {
+          include: {
+            product: true,
+          },
+        },
       },
     });
 
