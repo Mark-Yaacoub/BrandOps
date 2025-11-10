@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Filter, X, ChevronLeft, ChevronRight, Package } from "lucide-react";
 import Link from "next/link";
 import AlertDialog from "@/app/components/AlertDialog";
 
@@ -402,55 +402,68 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                  Product Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
-                  Formula
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                  Cost
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                  Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                  Profit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                  Actions
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[150px]">
+                    Product Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                    Description
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                    Formula
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    Cost
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    Price
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    Profit
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                    Components
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 min-w-[100px]">
+                    Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-[12rem] truncate" title={product.name}>
-                    {product.name}
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10" title={product.name}>
+                    <div className="max-w-[150px] truncate">{product.name}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-[16rem] truncate" title={product.description || "-"}>
-                    {product.description || "-"}
+                  <td className="px-4 py-3 text-sm text-gray-500" title={product.description || "-"}>
+                    <div className="max-w-[180px] truncate">{product.description || "-"}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-[16rem] truncate" title={product.formula || "-"}>
-                    {product.formula || "-"}
+                  <td className="px-4 py-3 text-sm text-gray-500" title={product.formula || "-"}>
+                    <div className="max-w-[180px] truncate">{product.formula || "-"}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     ${product.cost.toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     ${product.price.toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-green-600">
                     ${(product.price - product.cost).toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex gap-2">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <Link
+                      href={`/products/${product.id}/components`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-xs font-medium"
+                    >
+                      <Package className="w-3.5 h-3.5" />
+                      Components
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm sticky right-0 bg-white z-10">
+                    <div className="flex gap-2 justify-end">
                       <Link
                         href={`/products/${product.id}/edit`}
                         className="text-blue-600 hover:text-blue-900"
@@ -470,7 +483,7 @@ export default function ProductsPage() {
               ))}
               {filteredProducts.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     {searchTerm || filters.minCost || filters.maxCost || filters.minPrice || filters.maxPrice || filters.minProfit || filters.maxProfit
                       ? "No products match your filters. Try adjusting your search criteria."
                       : "No products found. Click \"Add Product\" to create one."}
@@ -479,6 +492,7 @@ export default function ProductsPage() {
               )}
             </tbody>
           </table>
+          </div>
 
           {/* Pagination */}
           {filteredProducts.length > 0 && (
