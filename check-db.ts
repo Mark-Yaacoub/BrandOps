@@ -19,7 +19,7 @@ async function checkDatabase() {
     // Check Batches
     const batches = await prisma.batch.findMany();
     console.log(`\n✅ Batches table: ${batches.length} records`);
-    batches.forEach((b: { batchNumber: string }) => console.log(`   - ${b.batchNumber}`));
+    batches.forEach((b: { name: string }) => console.log(`   - ${b.name}`));
 
     // Check Expenses
     const expenses = await prisma.expense.findMany();
