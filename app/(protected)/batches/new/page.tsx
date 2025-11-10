@@ -9,6 +9,7 @@ import Link from "next/link";
 interface Product {
   id: number;
   name: string;
+  cost: number;
 }
 
 interface BatchProduct {
@@ -51,6 +52,21 @@ export default function NewBatchPage() {
   const updateProduct = (index: number, field: keyof BatchProduct, value: string) => {
     const newProducts = [...products];
     newProducts[index][field] = value;
+    
+    // Auto-calculate cost when product or quantity changes
+    if (field === "productId" || field === "quantity") {
+      const productId = field === "productId" ? value : newProducts[index].productId;
+      const quantity = field === "quantity" ? value : newProducts[index].quantity;
+      
+      if (productId && quantity) {
+        const selectedProduct = productsData?.data?.find(p => p.id === parseInt(productId));
+        if (selectedProduct) {
+          const calculatedCost = selectedProduct.cost * parseFloat(quantity);
+          newProducts[index].cost = calculatedCost.toFixed(2);
+        }
+      }
+    }
+    
     setProducts(newProducts);
   };
 
@@ -60,11 +76,17 @@ export default function NewBatchPage() {
     e.preventDefault();
 
     // Validate at least one product is selected
-    const validProducts = products.filter((p) => p.productId && p.quantity && p.cost);
+    const validProducts = products.filter((p) => p.productId && p.quantity);
     if (validProducts.length === 0) {
-      alert("Please add at least one product with quantity and cost");
+      alert("Please add at least one product with quantity");
       return;
     }
+
+    // Ensure all products have cost calculated
+    const productsWithCost = validProducts.map(p => ({
+      ...p,
+      cost: p.cost || "0"
+    }));
 
     setIsSubmitting(true);
     try {
@@ -73,7 +95,7 @@ export default function NewBatchPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: batchNumber,
-          products: validProducts,
+          products: productsWithCost,
           status,
           startDate,
           endDate,
@@ -187,21 +209,20 @@ export default function NewBatchPage() {
 
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Cost (Total for all quantities)
+                          Cost (Total) <span className="text-blue-600 text-[10px]">Auto-calculated</span>
                         </label>
                         <div className="relative">
                           <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
                           <input
                             type="number"
                             step="0.01"
-                            required
                             value={product.cost}
                             onChange={(e) => updateProduct(index, "cost", e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent text-gray-900 text-sm"
+                            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900 text-sm"
                             placeholder="0.00"
                           />
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">التكلفة الإجمالية للكمية كلها</p>
+                        <p className="text-xs text-gray-500 mt-1">يحسب تلقائيًا • يمكن التعديل للخصومات</p>
                       </div>
                     </div>
 

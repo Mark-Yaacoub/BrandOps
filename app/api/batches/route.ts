@@ -43,6 +43,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get product details to calculate costs
+    const productIds = products.map((p: any) => parseInt(p.productId));
+    const productsData = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, cost: true },
+    });
+
+    const productCostMap = new Map(productsData.map((p: any) => [p.id, p.cost]));
+
     const batch = await prisma.batch.create({
       data: {
         name,
@@ -52,11 +61,22 @@ export async function POST(request: NextRequest) {
         targetSegments: targetSegments || null,
         targetSalesLocations: targetSalesLocations || null,
         products: {
-          create: products.map((p: any) => ({
-            productId: parseInt(p.productId),
-            quantity: parseInt(p.quantity),
-            cost: parseFloat(p.cost),
-          })),
+          create: products.map((p: any) => {
+            const productId = parseInt(p.productId);
+            const quantity = parseInt(p.quantity);
+            const productCost = Number(productCostMap.get(productId) || 0);
+            
+            // Use provided cost if available, otherwise calculate from product cost
+            const cost = p.cost !== undefined && p.cost !== null 
+              ? parseFloat(p.cost) 
+              : productCost * quantity;
+
+            return {
+              productId,
+              quantity,
+              cost,
+            };
+          }),
         },
       },
       include: {

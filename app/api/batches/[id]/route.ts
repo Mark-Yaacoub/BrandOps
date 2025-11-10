@@ -53,6 +53,17 @@ export async function PUT(
       where: { batchId: parseInt(id) },
     });
 
+    // Get product details to calculate costs if products are being updated
+    let productCostMap = new Map();
+    if (products && products.length > 0) {
+      const productIds = products.map((p: any) => parseInt(p.productId));
+      const productsData = await prisma.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, cost: true },
+      });
+      productCostMap = new Map(productsData.map((p: any) => [p.id, p.cost]));
+    }
+
     const batch = await prisma.batch.update({
       where: { id: parseInt(id) },
       data: {
@@ -64,11 +75,22 @@ export async function PUT(
         ...(targetSalesLocations !== undefined && { targetSalesLocations }),
         ...(products && {
           products: {
-            create: products.map((p: any) => ({
-              productId: parseInt(p.productId),
-              quantity: parseInt(p.quantity),
-              cost: parseFloat(p.cost),
-            })),
+            create: products.map((p: any) => {
+              const productId = parseInt(p.productId);
+              const quantity = parseInt(p.quantity);
+              const productCost = Number(productCostMap.get(productId) || 0);
+              
+              // Use provided cost if available, otherwise calculate from product cost
+              const cost = p.cost !== undefined && p.cost !== null 
+                ? parseFloat(p.cost) 
+                : productCost * quantity;
+
+              return {
+                productId,
+                quantity,
+                cost,
+              };
+            }),
           },
         }),
       },
