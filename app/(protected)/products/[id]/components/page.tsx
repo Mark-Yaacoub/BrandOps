@@ -70,6 +70,8 @@ export default function ProductComponentsPage({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product-components", resolvedParams.id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product", resolvedParams.id] });
       resetForm();
     },
   });
@@ -86,6 +88,8 @@ export default function ProductComponentsPage({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product-components", resolvedParams.id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product", resolvedParams.id] });
       resetForm();
     },
   });
@@ -98,6 +102,8 @@ export default function ProductComponentsPage({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["product-components", resolvedParams.id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product", resolvedParams.id] });
       setDeleteId(null);
     },
   });
