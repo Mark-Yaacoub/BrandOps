@@ -248,17 +248,30 @@ export default function TasksPage() {
   // Filter and search tasks
   const filteredTasks = useMemo(() => {
     let result = data?.data || [];
+    console.log("=== FILTER DEBUG ===");
     console.log("All tasks before filtering:", result.length);
     console.log("View mode:", viewMode);
     console.log("Current user ID for filtering:", currentUserId);
+    
+    // Log first task's assignedToId if exists
+    if (result.length > 0) {
+      console.log("First task assignedToId:", (result[0] as any).assignedToId);
+      console.log("First task createdById:", (result[0] as any).createdById);
+    }
 
     // View Mode filter (My Tasks vs All Tasks)
     if (viewMode === "my" && currentUserId) {
+      console.log("Applying 'my tasks' filter...");
       // Show only tasks assigned to me
-      result = result.filter((task) => 
-        (task as any).assignedToId === currentUserId
-      );
-      console.log("Tasks after 'my' filter:", result.length);
+      const beforeCount = result.length;
+      result = result.filter((task) => {
+        const isAssigned = (task as any).assignedToId === currentUserId;
+        console.log(`Task "${task.title}" - assignedToId: ${(task as any).assignedToId}, currentUserId: ${currentUserId}, match: ${isAssigned}`);
+        return isAssigned;
+      });
+      console.log(`Tasks after 'my' filter: ${result.length} (from ${beforeCount})`);
+    } else {
+      console.log("NOT applying filter - viewMode:", viewMode, "currentUserId:", currentUserId);
     }
 
     // Search filter

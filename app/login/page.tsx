@@ -31,7 +31,7 @@ export default function LoginPage() {
     onSuccess: (data) => {
       // Store token in localStorage as well for API calls
       if (data.data?.token) {
-        localStorage.setItem("auth_token", data.data.token);
+        localStorage.setItem("token", data.data.token);
       }
       // Force a hard navigation to ensure middleware runs
       window.location.href = "/dashboard";

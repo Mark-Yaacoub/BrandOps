@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Calendar,
@@ -22,6 +22,7 @@ interface User {
 
 export default function NewTaskPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   
   const [formData, setFormData] = useState({
     title: "",
@@ -80,6 +81,8 @@ export default function NewTaskPage() {
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate tasks query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       router.push("/tasks");
     },
   });

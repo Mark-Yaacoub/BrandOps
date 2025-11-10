@@ -38,7 +38,7 @@ export function Sidebar() {
       });
       
       // Clear localStorage
-      localStorage.removeItem("auth_token");
+      localStorage.removeItem("token");
       
       // Redirect to login
       window.location.href = "/login";
